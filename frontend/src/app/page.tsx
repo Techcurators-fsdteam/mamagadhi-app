@@ -1,4 +1,28 @@
+'use client';
+
+import { useState } from 'react';
+import LoginPopup from '../components/LoginPopup';
+import SignupPopup from '../components/SignupPopup';
+
 export default function Home() {
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [isSignupOpen, setIsSignupOpen] = useState(false);
+
+  const handleSwitchToSignup = () => {
+    setIsLoginOpen(false);
+    setIsSignupOpen(true);
+  };
+
+  const handleSwitchToLogin = () => {
+    setIsSignupOpen(false);
+    setIsLoginOpen(true);
+  };
+
+  const closeAllPopups = () => {
+    setIsLoginOpen(false);
+    setIsSignupOpen(false);
+  };
+
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-8 bg-mamagaadi-blue text-mamagaadi-white">
       <h1 className="text-5xl font-extrabold mb-4 drop-shadow-lg">Mamagadhi</h1>
@@ -22,7 +46,24 @@ export default function Home() {
           <p className="text-center text-mamagaadi-white/80">Reduce your carbon footprint and help decongest city roads by sharing rides.</p>
         </div>
       </section>
-      <a href="#" className="mt-4 px-8 py-3 rounded-full bg-white text-mamagaadi-blue font-bold text-lg shadow-md hover:bg-mamagaadi-white/90 transition">Get Started</a>
+      <button 
+        onClick={() => setIsLoginOpen(true)}
+        className="mt-4 px-8 py-3 rounded-full bg-white text-mamagaadi-blue font-bold text-lg shadow-md hover:bg-mamagaadi-white/90 transition"
+      >
+        Get Started
+      </button>
+      
+      <LoginPopup 
+        isOpen={isLoginOpen} 
+        onClose={closeAllPopups}
+        onSwitchToSignup={handleSwitchToSignup}
+      />
+      
+      <SignupPopup 
+        isOpen={isSignupOpen} 
+        onClose={closeAllPopups}
+        onSwitchToLogin={handleSwitchToLogin}
+      />
     </main>
   );
 }

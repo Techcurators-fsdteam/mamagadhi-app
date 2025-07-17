@@ -8,7 +8,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        mamagaadi: {
+        mamagadhi: {
           blue: "#4AAAFF",
           white: "#FFFFFF",
         },
