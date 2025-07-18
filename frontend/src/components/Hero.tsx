@@ -43,7 +43,7 @@ const Hero = () => {
       </section>
 
       {/* Features section - FULL WIDTH */}
-      <section className="w-screen ">
+      <section className="w-relative">
         <FeatureSection />
       </section>
 

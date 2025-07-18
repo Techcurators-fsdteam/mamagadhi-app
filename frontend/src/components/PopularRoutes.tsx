@@ -14,7 +14,7 @@ const routes = [
   },
   {
     label: "New Delhi → Jaipur",
-    height: "50px",
+    height: "60px",
     svg: (
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" className="mr-2">
         <path d="M4 12L12 4L20 12H4ZM4 14H20V20H4V14Z" fill="#222" />
@@ -23,7 +23,7 @@ const routes = [
   },
   {
     label: "New Delhi → Agra",
-    height: "40px",
+    height: "60px",
     svg: (
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" className="mr-2">
         <path d="M12 2L14 6H10L12 2ZM6 8L8 12H4L6 8ZM18 8L20 12H16L18 8ZM2 14H22V22H2V14ZM10 14V18H14V14H10Z" fill="#222" />
