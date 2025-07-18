@@ -21,7 +21,7 @@ export default function LoginPopup({ isOpen, onClose, onSwitchToSignup }: LoginP
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-white/30 backdrop-blur-[8px] flex items-center justify-center z-50">
       <div className="bg-gradient-to-b from-[#4AAAFF] to-white/70 rounded-2xl p-8 w-full max-w-md mx-4 relative shadow-2xl">
         {/* Close button */}
         <button
