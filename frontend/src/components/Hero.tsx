@@ -43,9 +43,11 @@ const Hero = () => {
       </section>
 
       {/* Features section - FULL WIDTH */}
-      <section className="w-relative">
+      <section className="w-screen bg-white ">
         <FeatureSection />
       </section>
+
+
 
       {/* Ride Sharing With Mamaghadi */}
       <section className="w-screen relative left-1/2 right-1/2 -mx-[50vw] bg-[#4AAEFF] py-14 sm:py-20 px-4 sm:px-8">
