@@ -126,7 +126,6 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
       
       // Move to account creation step
       setStep('account-creation');
-      setLoading(false);
       
       // Automatically proceed to create account
       await createUserAccount(credential);
@@ -140,15 +139,16 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
       } else {
         setError(authError.message || 'Phone verification failed');
       }
+      setStep('phone-verification'); // Go back to phone verification step
+    } finally {
       setLoading(false);
     }
   };
 
   const createUserAccount = async (phoneCredential: AuthCredential) => {
-    setLoading(true);
-    setError('');
-
     try {
+      console.log('Starting account creation...');
+      
       // Create user with email and password in Firebase
       const userCredential = await createUserWithEmailAndPassword(
         auth, 
@@ -157,15 +157,18 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
       );
 
       const user = userCredential.user;
+      console.log('Firebase user created:', user.uid);
 
       // Update user profile with name in Firebase
       await updateProfile(user, {
         displayName: `${formData.firstName} ${formData.lastName}`
       });
+      console.log('Firebase profile updated');
 
       // Link the verified phone credential to the email account
       try {
         await linkWithCredential(user, phoneCredential);
+        console.log('Phone credential linked successfully');
       } catch (linkError) {
         console.error('Phone linking error:', linkError);
         // Continue even if linking fails - phone is already verified
@@ -173,7 +176,7 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
 
       // Create user profile in Supabase
       const userProfileData: Omit<UserProfile, 'created_at' | 'updated_at'> = {
-        id: user.uid, // Firebase UID as string
+        id: user.uid,
         email: formData.email,
         phone: formData.phone,
         first_name: formData.firstName,
@@ -181,21 +184,12 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
         display_name: `${formData.firstName} ${formData.lastName}`,
         role: selectedRole,
         is_email_verified: user.emailVerified,
-        is_phone_verified: true // Phone is already verified at this point
+        is_phone_verified: true
       };
 
-      try {
-        await createUserProfile(userProfileData);
-      } catch (supabaseError) {
-        console.error('Supabase error:', supabaseError);
-        // If Supabase fails, we should delete the Firebase user to maintain consistency
-        try {
-          await user.delete();
-        } catch (deleteError) {
-          console.error('Failed to delete Firebase user:', deleteError);
-        }
-        throw new Error('Failed to create user profile. Please try again.');
-      }
+      console.log('Creating Supabase profile...');
+      await createUserProfile(userProfileData);
+      console.log('Supabase profile created successfully');
 
       setStep('success');
       
@@ -209,6 +203,16 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
       console.error('Account creation error:', error);
       const authError = error as AuthError;
       
+      // Clean up Firebase user if it was created but Supabase failed
+      if (auth.currentUser) {
+        try {
+          await auth.currentUser.delete();
+          console.log('Firebase user cleaned up due to error');
+        } catch (deleteError) {
+          console.error('Failed to delete Firebase user:', deleteError);
+        }
+      }
+      
       if (authError.code === 'auth/email-already-in-use') {
         setError('An account with this email already exists');
       } else if (authError.code === 'auth/weak-password') {
@@ -220,8 +224,9 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
       } else {
         setError(authError.message || 'Failed to create account');
       }
-    } finally {
-      setLoading(false);
+      
+      // Go back to form step to show error
+      setStep('form');
     }
   };
 
@@ -522,6 +527,12 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
             <p className="text-white/90 text-sm">
               Phone verified! Setting up your account...
             </p>
+            {/* Add error display for account creation step */}
+            {error && (
+              <div className="text-red-200 text-sm bg-red-500/20 rounded-lg p-3 mt-4">
+                {error}
+              </div>
+            )}
           </div>
         )}
 
