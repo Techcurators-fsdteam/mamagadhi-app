@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { auth } from '../../../firebase/config';
-import { isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth';
+import { isSignInWithEmailLink, signInWithEmailLink, AuthError } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 
 export default function VerifyPage() {
@@ -41,9 +41,10 @@ export default function VerifyPage() {
         } else {
           throw new Error('Invalid verification link');
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Email verification failed:', error);
-        setError(error.message);
+        const authError = error as AuthError;
+        setError(authError.message);
         setStatus('error');
       }
     };

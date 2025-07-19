@@ -7,7 +7,8 @@ import {
   signInWithPhoneNumber,
   PhoneAuthProvider,
   signInWithCredential,
-  signInWithEmailAndPassword
+  signInWithEmailAndPassword,
+  AuthError
 } from 'firebase/auth';
 
 interface LoginPopupProps {
@@ -65,17 +66,18 @@ export default function LoginPopup({ isOpen, onClose, onSwitchToSignup }: LoginP
     try {
       await signInWithEmailAndPassword(auth, email, password);
       onClose();
-    } catch (error: any) {
-      if (error.code === 'auth/user-not-found') {
+    } catch (error: unknown) {
+      const authError = error as AuthError;
+      if (authError.code === 'auth/user-not-found') {
         setError('No account found with this email. Please sign up first.');
-      } else if (error.code === 'auth/wrong-password') {
+      } else if (authError.code === 'auth/wrong-password') {
         setError('Incorrect password. Please try again.');
-      } else if (error.code === 'auth/invalid-email') {
+      } else if (authError.code === 'auth/invalid-email') {
         setError('Invalid email address.');
-      } else if (error.code === 'auth/too-many-requests') {
+      } else if (authError.code === 'auth/too-many-requests') {
         setError('Too many failed attempts. Please try again later.');
       } else {
-        setError(error.message || 'Login failed');
+        setError(authError.message || 'Login failed');
       }
     } finally {
       setLoading(false);
@@ -100,12 +102,13 @@ export default function LoginPopup({ isOpen, onClose, onSwitchToSignup }: LoginP
       setVerificationId(confirmationResult.verificationId);
       setStep('otp');
       setResendCooldown(30);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Send OTP error:', error);
-      if (error.code === 'auth/user-not-found') {
+      const authError = error as AuthError;
+      if (authError.code === 'auth/user-not-found') {
         setError('No account found with this phone number. Please sign up first.');
       } else {
-        setError(error.message || 'Failed to send OTP');
+        setError(authError.message || 'Failed to send OTP');
       }
     } finally {
       setLoading(false);
@@ -121,13 +124,14 @@ export default function LoginPopup({ isOpen, onClose, onSwitchToSignup }: LoginP
       const credential = PhoneAuthProvider.credential(verificationId, otp);
       await signInWithCredential(auth, credential);
       onClose();
-    } catch (error: any) {
-      if (error.code === 'auth/invalid-verification-code') {
+    } catch (error: unknown) {
+      const authError = error as AuthError;
+      if (authError.code === 'auth/invalid-verification-code') {
         setError('Invalid OTP code. Please try again.');
-      } else if (error.code === 'auth/code-expired') {
+      } else if (authError.code === 'auth/code-expired') {
         setError('OTP code has expired. Please request a new one.');
       } else {
-        setError(error.message || 'Verification failed');
+        setError(authError.message || 'Verification failed');
       }
     } finally {
       setLoading(false);
@@ -146,8 +150,9 @@ export default function LoginPopup({ isOpen, onClose, onSwitchToSignup }: LoginP
         const confirmationResult = await signInWithPhoneNumber(auth, phone, recaptchaVerifier);
         setVerificationId(confirmationResult.verificationId);
         setResendCooldown(30);
-      } catch (error: any) {
-        setError(error.message || 'Failed to resend OTP');
+      } catch (error: unknown) {
+        const authError = error as AuthError;
+        setError(authError.message || 'Failed to resend OTP');
       } finally {
         setLoading(false);
       }
@@ -372,7 +377,7 @@ export default function LoginPopup({ isOpen, onClose, onSwitchToSignup }: LoginP
 
         <div className="text-center">
           <p className="text-sm text-white">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <button 
               onClick={onSwitchToSignup}
               className="text-white font-medium hover:underline"

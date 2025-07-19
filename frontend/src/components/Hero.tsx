@@ -1,18 +1,23 @@
 import React, { useState } from 'react';
+import Image from 'next/image';
 import SearchBar from './SearchBar';
 import FeatureSection from './FeatureSection';
 import PopularRoutes from './PopularRoutes';
 
 const Hero = () => {
+  const [expanded, setExpanded] = useState<number | null>(null);
+
   return (
     <>
       {/* Hero image section */}
       <section className="w-full flex flex-col items-center bg-white pb-8 sm:pb-12">
         <div className="w-full max-w-6xl px-4 sm:px-8 mt-6 sm:mt-10 overflow-hidden">
           <div className="w-full rounded-xl overflow-hidden relative">
-            <img
+            <Image
               src="/hero.png"
               alt="Ride Sharing"
+              width={1277}
+              height={272}
               className="w-full object-cover rounded-xl hero-img-mobile"
               style={{
                 aspectRatio: '1277/272',
@@ -64,7 +69,7 @@ const Hero = () => {
             </button>
           </div>
           <div className="flex-1 flex justify-center">
-            <img src="/hero2.svg" alt="Carpool" className="w-[280px] sm:w-[360px] md:w-[420px] h-auto" />
+            <Image src="/hero2.svg" alt="Carpool" width={420} height={420} className="w-[280px] sm:w-[360px] md:w-[420px] h-auto" />
           </div>
         </div>
       </section>
@@ -73,9 +78,11 @@ const Hero = () => {
       <section className="w-full bg-white py-14 sm:py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-8 flex flex-col md:flex-row items-center gap-12">
           <div className="flex-1 flex justify-center md:justify-start">
-            <img
+            <Image
               src="/hero3.svg"
               alt="Stay Safe from Scams"
+              width={360}
+              height={360}
               className="w-[220px] sm:w-[300px] md:w-[360px] h-auto"
             />
           </div>
@@ -85,7 +92,7 @@ const Hero = () => {
               Help us keep you safe from scams
             </h2>
             <p className="text-gray-600 mb-8 max-w-md mx-auto md:mx-0 text-base sm:text-lg leading-relaxed">
-              We're working hard to make Mamaghadi as secure as possible. Know how to avoid and report scams by following our safety guidelines.
+              We&apos;re working hard to make Mamaghadi as secure as possible. Know how to avoid and report scams by following our safety guidelines.
             </p>
             <button className="bg-[#F8FAFF] text-[#4AAEFF] px-8 py-3 rounded-full font-semibold border border-[#4AAEFF] hover:bg-[#E6F2FF] transition-colors text-base">
               Learn More
@@ -116,7 +123,7 @@ const Hero = () => {
               },
               {
                 title: "How do I cancel my ride?",
-                desc: "If you have a change of plans, you can always cancel your ride sharing from the ‘Your rides’ section of our website. The sooner you cancel, the better. That way the driver has time to accept new passengers.",
+                desc: "If you have a change of plans, you can always cancel your ride sharing from the &apos;Your rides&apos; section of our website. The sooner you cancel, the better. That way the driver has time to accept new passengers.",
               },
               {
                 title: "How much does a ride-share cost?",
@@ -135,7 +142,6 @@ const Hero = () => {
                 desc: "Ridesharing with Mamaghadi is super easy, and free! Simply sign up for an account and tell us some basic details about yourself. Once you have a Mamaghadi account, you can start booking or publishing rides.",
               },
             ];
-            const [expanded, setExpanded] = useState<number | null>(null);
             return (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 {helpItems.map((item, idx) => (

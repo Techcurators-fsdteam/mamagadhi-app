@@ -8,7 +8,8 @@ import {
   RecaptchaVerifier,
   signInWithPhoneNumber,
   PhoneAuthProvider,
-  linkWithCredential
+  linkWithCredential,
+  AuthError
 } from 'firebase/auth';
 
 interface SignupPopupProps {
@@ -114,16 +115,17 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
       setVerificationId(confirmationResult.verificationId);
       setStep('phone-verification');
       setResendCooldown(30);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Signup error:', error);
-      if (error.code === 'auth/email-already-in-use') {
+      const authError = error as AuthError;
+      if (authError.code === 'auth/email-already-in-use') {
         setError('An account with this email already exists');
-      } else if (error.code === 'auth/weak-password') {
+      } else if (authError.code === 'auth/weak-password') {
         setError('Password is too weak');
-      } else if (error.code === 'auth/invalid-email') {
+      } else if (authError.code === 'auth/invalid-email') {
         setError('Invalid email address');
       } else {
-        setError(error.message || 'Failed to create account');
+        setError(authError.message || 'Failed to create account');
       }
     } finally {
       setLoading(false);
@@ -151,16 +153,17 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
       } else {
         throw new Error('User not authenticated');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Phone verification error:', error);
-      if (error.code === 'auth/invalid-verification-code') {
+      const authError = error as AuthError;
+      if (authError.code === 'auth/invalid-verification-code') {
         setError('Invalid OTP code. Please try again.');
-      } else if (error.code === 'auth/code-expired') {
+      } else if (authError.code === 'auth/code-expired') {
         setError('OTP code has expired. Please request a new one.');
-      } else if (error.code === 'auth/credential-already-in-use') {
+      } else if (authError.code === 'auth/credential-already-in-use') {
         setError('This phone number is already associated with another account.');
       } else {
-        setError(error.message || 'Phone verification failed');
+        setError(authError.message || 'Phone verification failed');
       }
     } finally {
       setLoading(false);
@@ -179,8 +182,9 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
         const confirmationResult = await signInWithPhoneNumber(auth, formData.phone, recaptchaVerifier);
         setVerificationId(confirmationResult.verificationId);
         setResendCooldown(30);
-      } catch (error: any) {
-        setError(error.message || 'Failed to resend OTP');
+      } catch (error: unknown) {
+        const authError = error as AuthError;
+        setError(authError.message || 'Failed to resend OTP');
       } finally {
         setLoading(false);
       }

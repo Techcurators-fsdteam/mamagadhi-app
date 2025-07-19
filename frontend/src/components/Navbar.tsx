@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
@@ -28,7 +29,14 @@ const Navbar = () => {
         {/* Logo */}
         <div className="flex items-center gap-2 sm:gap-3 min-w-[80px] h-full relative">
           <Link href="/">
-            <img src="/logo.png" alt="Logo" className="h-14 sm:h-16 md:h-20 object-contain relative top-0 left-0" style={{ maxWidth: 180, zIndex: 10 }} />
+            <Image 
+              src="/logo.png" 
+              alt="Logo" 
+              width={180} 
+              height={80} 
+              className="h-14 sm:h-16 md:h-20 object-contain relative top-0 left-0" 
+              style={{ maxWidth: 180, zIndex: 10 }} 
+            />
           </Link>
         </div>
         {/* Center: Search and Post a ride */}
