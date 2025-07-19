@@ -2,8 +2,18 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY! // Add this to your .env.local
 
+// Regular client for authenticated operations
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+// Service role client for admin operations (like user creation)
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+})
 
 // User profile interface - updated to use string for Firebase UID
 export interface UserProfile {
@@ -20,9 +30,9 @@ export interface UserProfile {
   updated_at: string
 }
 
-// Function to create user profile in Supabase
+// Function to create user profile using service role (bypasses RLS)
 export const createUserProfile = async (userData: Omit<UserProfile, 'created_at' | 'updated_at'>) => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('user_profiles')
     .insert([{
       ...userData,

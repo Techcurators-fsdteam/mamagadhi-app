@@ -146,6 +146,8 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
   };
 
   const createUserAccount = async (phoneCredential: AuthCredential) => {
+    let firebaseUser = null;
+    
     try {
       console.log('Starting account creation...');
       
@@ -156,18 +158,18 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
         formData.password
       );
 
-      const user = userCredential.user;
-      console.log('Firebase user created:', user.uid);
+      firebaseUser = userCredential.user;
+      console.log('Firebase user created:', firebaseUser.uid);
 
       // Update user profile with name in Firebase
-      await updateProfile(user, {
+      await updateProfile(firebaseUser, {
         displayName: `${formData.firstName} ${formData.lastName}`
       });
       console.log('Firebase profile updated');
 
       // Link the verified phone credential to the email account
       try {
-        await linkWithCredential(user, phoneCredential);
+        await linkWithCredential(firebaseUser, phoneCredential);
         console.log('Phone credential linked successfully');
       } catch (linkError) {
         console.error('Phone linking error:', linkError);
@@ -176,20 +178,40 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
 
       // Create user profile in Supabase
       const userProfileData: Omit<UserProfile, 'created_at' | 'updated_at'> = {
-        id: user.uid,
+        id: firebaseUser.uid,
         email: formData.email,
         phone: formData.phone,
         first_name: formData.firstName,
         last_name: formData.lastName,
         display_name: `${formData.firstName} ${formData.lastName}`,
         role: selectedRole,
-        is_email_verified: user.emailVerified,
+        is_email_verified: firebaseUser.emailVerified,
         is_phone_verified: true
       };
 
-      console.log('Creating Supabase profile...');
-      await createUserProfile(userProfileData);
-      console.log('Supabase profile created successfully');
+      console.log('Creating Supabase profile...', userProfileData);
+      
+      try {
+        await createUserProfile(userProfileData);
+        console.log('Supabase profile created successfully');
+      } catch (supabaseError) {
+        console.error('Supabase profile creation failed:', supabaseError);
+        
+        // Clean up Firebase user since Supabase failed
+        if (firebaseUser) {
+          try {
+            await firebaseUser.delete();
+            console.log('Firebase user cleaned up due to Supabase error');
+          } catch (deleteError) {
+            console.error('Failed to delete Firebase user:', deleteError);
+          }
+        }
+        
+        // Sign out to clear any auth state
+        await auth.signOut();
+        
+        throw new Error('Failed to create user profile in database. Please try again.');
+      }
 
       setStep('success');
       
@@ -201,17 +223,25 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
 
     } catch (error: unknown) {
       console.error('Account creation error:', error);
-      const authError = error as AuthError;
       
-      // Clean up Firebase user if it was created but Supabase failed
-      if (auth.currentUser) {
+      // If we have a Firebase user but something failed, clean it up
+      if (firebaseUser && auth.currentUser) {
         try {
           await auth.currentUser.delete();
-          console.log('Firebase user cleaned up due to error');
+          console.log('Firebase user cleaned up due to general error');
         } catch (deleteError) {
           console.error('Failed to delete Firebase user:', deleteError);
         }
       }
+      
+      // Sign out to clear any auth state
+      try {
+        await auth.signOut();
+      } catch (signOutError) {
+        console.error('Failed to sign out:', signOutError);
+      }
+      
+      const authError = error as AuthError;
       
       if (authError.code === 'auth/email-already-in-use') {
         setError('An account with this email already exists');
@@ -220,9 +250,9 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
       } else if (authError.code === 'auth/invalid-email') {
         setError('Invalid email address');
       } else if (authError.message?.includes('Failed to create user profile')) {
-        setError('Failed to create user profile. Please try again.');
+        setError('Failed to create user profile in database. Please try again.');
       } else {
-        setError(authError.message || 'Failed to create account');
+        setError(authError.message || 'Failed to create account. Please try again.');
       }
       
       // Go back to form step to show error
