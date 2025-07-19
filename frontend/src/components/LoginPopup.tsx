@@ -10,6 +10,7 @@ import {
   signInWithEmailAndPassword,
   AuthError
 } from 'firebase/auth';
+import { getUserProfile } from '../lib/supabase';
 
 interface LoginPopupProps {
   isOpen: boolean;
@@ -64,7 +65,17 @@ export default function LoginPopup({ isOpen, onClose, onSwitchToSignup }: LoginP
     setLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      // Verify user exists in Supabase
+      try {
+        await getUserProfile(userCredential.user.uid);
+      } catch (supabaseError) {
+        console.error('User not found in Supabase:', supabaseError);
+        setError('Account setup incomplete. Please contact support.');
+        return;
+      }
+      
       onClose();
     } catch (error: unknown) {
       const authError = error as AuthError;

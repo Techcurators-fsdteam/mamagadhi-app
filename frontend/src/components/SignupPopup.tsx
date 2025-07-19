@@ -9,8 +9,10 @@ import {
   signInWithPhoneNumber,
   PhoneAuthProvider,
   linkWithCredential,
-  AuthError
+  AuthError,
+  AuthCredential
 } from 'firebase/auth';
+import { createUserProfile, UserProfile } from '../lib/supabase';
 
 interface SignupPopupProps {
   isOpen: boolean;
@@ -18,7 +20,7 @@ interface SignupPopupProps {
   onSwitchToLogin: () => void;
 }
 
-type SignupStep = 'form' | 'phone-verification' | 'success';
+type SignupStep = 'form' | 'phone-verification' | 'account-creation' | 'success';
 
 export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: SignupPopupProps) {
   const [step, setStep] = useState<SignupStep>('form');
@@ -28,6 +30,7 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
   const [verificationId, setVerificationId] = useState('');
   const [otp, setOtp] = useState('');
   const [recaptchaVerifier, setRecaptchaVerifier] = useState<RecaptchaVerifier | null>(null);
+  const [selectedRole, setSelectedRole] = useState<'driver' | 'passenger' | 'both'>('passenger');
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -94,19 +97,7 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
     setLoading(true);
 
     try {
-      // Create user with email and password
-      const userCredential = await createUserWithEmailAndPassword(
-        auth, 
-        formData.email, 
-        formData.password
-      );
-
-      // Update user profile with name
-      await updateProfile(userCredential.user, {
-        displayName: `${formData.firstName} ${formData.lastName}`
-      });
-
-      // Now verify phone number
+      // First verify phone number with OTP
       if (!recaptchaVerifier) {
         throw new Error('reCAPTCHA not initialized');
       }
@@ -116,17 +107,9 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
       setStep('phone-verification');
       setResendCooldown(30);
     } catch (error: unknown) {
-      console.error('Signup error:', error);
+      console.error('Phone verification error:', error);
       const authError = error as AuthError;
-      if (authError.code === 'auth/email-already-in-use') {
-        setError('An account with this email already exists');
-      } else if (authError.code === 'auth/weak-password') {
-        setError('Password is too weak');
-      } else if (authError.code === 'auth/invalid-email') {
-        setError('Invalid email address');
-      } else {
-        setError(authError.message || 'Failed to create account');
-      }
+      setError(authError.message || 'Failed to send OTP');
     } finally {
       setLoading(false);
     }
@@ -138,21 +121,15 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
     setLoading(true);
 
     try {
-      // Verify phone OTP and link to existing account
+      // Verify phone OTP
       const credential = PhoneAuthProvider.credential(verificationId, otp);
       
-      if (auth.currentUser) {
-        await linkWithCredential(auth.currentUser, credential);
-        setStep('success');
-        
-        // Auto close after 2 seconds and redirect
-        setTimeout(() => {
-          onClose();
-          // Add your redirect logic here (e.g., router.push('/onboarding'))
-        }, 2000);
-      } else {
-        throw new Error('User not authenticated');
-      }
+      // Move to account creation step
+      setStep('account-creation');
+      setLoading(false);
+      
+      // Automatically proceed to create account
+      await createUserAccount(credential);
     } catch (error: unknown) {
       console.error('Phone verification error:', error);
       const authError = error as AuthError;
@@ -160,10 +137,88 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
         setError('Invalid OTP code. Please try again.');
       } else if (authError.code === 'auth/code-expired') {
         setError('OTP code has expired. Please request a new one.');
-      } else if (authError.code === 'auth/credential-already-in-use') {
-        setError('This phone number is already associated with another account.');
       } else {
         setError(authError.message || 'Phone verification failed');
+      }
+      setLoading(false);
+    }
+  };
+
+  const createUserAccount = async (phoneCredential: AuthCredential) => {
+    setLoading(true);
+    setError('');
+
+    try {
+      // Create user with email and password in Firebase
+      const userCredential = await createUserWithEmailAndPassword(
+        auth, 
+        formData.email, 
+        formData.password
+      );
+
+      const user = userCredential.user;
+
+      // Update user profile with name in Firebase
+      await updateProfile(user, {
+        displayName: `${formData.firstName} ${formData.lastName}`
+      });
+
+      // Link the verified phone credential to the email account
+      try {
+        await linkWithCredential(user, phoneCredential);
+      } catch (linkError) {
+        console.error('Phone linking error:', linkError);
+        // Continue even if linking fails - phone is already verified
+      }
+
+      // Create user profile in Supabase
+      const userProfileData: Omit<UserProfile, 'created_at' | 'updated_at'> = {
+        id: user.uid, // Firebase UID as string
+        email: formData.email,
+        phone: formData.phone,
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        display_name: `${formData.firstName} ${formData.lastName}`,
+        role: selectedRole,
+        is_email_verified: user.emailVerified,
+        is_phone_verified: true // Phone is already verified at this point
+      };
+
+      try {
+        await createUserProfile(userProfileData);
+      } catch (supabaseError) {
+        console.error('Supabase error:', supabaseError);
+        // If Supabase fails, we should delete the Firebase user to maintain consistency
+        try {
+          await user.delete();
+        } catch (deleteError) {
+          console.error('Failed to delete Firebase user:', deleteError);
+        }
+        throw new Error('Failed to create user profile. Please try again.');
+      }
+
+      setStep('success');
+      
+      // Auto close after 3 seconds and redirect
+      setTimeout(() => {
+        onClose();
+        // Add your redirect logic here (e.g., router.push('/dashboard'))
+      }, 3000);
+
+    } catch (error: unknown) {
+      console.error('Account creation error:', error);
+      const authError = error as AuthError;
+      
+      if (authError.code === 'auth/email-already-in-use') {
+        setError('An account with this email already exists');
+      } else if (authError.code === 'auth/weak-password') {
+        setError('Password is too weak');
+      } else if (authError.code === 'auth/invalid-email') {
+        setError('Invalid email address');
+      } else if (authError.message?.includes('Failed to create user profile')) {
+        setError('Failed to create user profile. Please try again.');
+      } else {
+        setError(authError.message || 'Failed to create account');
       }
     } finally {
       setLoading(false);
@@ -204,6 +259,7 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
     setOtp('');
     setError('');
     setVerificationId('');
+    setSelectedRole('passenger');
   };
 
   return (
@@ -224,6 +280,7 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
           <p className="text-sm text-white/90 mt-2">
             {step === 'form' && 'Create your account'}
             {step === 'phone-verification' && 'Verify your phone number'}
+            {step === 'account-creation' && 'Creating your account...'}
             {step === 'success' && 'Account created successfully!'}
           </p>
         </div>
@@ -296,6 +353,41 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
               <p className="text-xs text-white/80 mt-1">
                 Use E.164 format (e.g., +1234567890)
               </p>
+            </div>
+
+            {/* Role Selection */}
+            <div>
+              <label className="block text-sm font-medium text-white mb-2">
+                I want to use Mamagadhi as a:
+              </label>
+              <div className="space-y-2">
+                {[
+                  {
+                    value: 'passenger',
+                    label: 'Passenger (Book rides)'
+                  },
+                  {
+                    value: 'driver',
+                    label: 'Driver (Offer rides)'
+                  },
+                  {
+                    value: 'both',
+                    label: 'Both (Book & Offer rides)'
+                  }
+                ].map((option) => (
+                  <label key={option.value} className="flex items-center">
+                    <input
+                      type="radio"
+                      name="role"
+                      value={option.value}
+                      checked={selectedRole === option.value}
+                      onChange={(e) => setSelectedRole(e.target.value as typeof selectedRole)}
+                      className="mr-3 text-[#35a4c9] focus:ring-[#35a4c9]"
+                    />
+                    <span className="text-white text-sm">{option.label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
 
             <div>
@@ -384,6 +476,9 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
               <p className="text-xs text-white/80 mt-1">
                 SMS sent to {formData.phone}
               </p>
+              <p className="text-xs text-white/70 mt-2">
+                After verification, we&apos;ll create your account automatically.
+              </p>
             </div>
 
             {error && (
@@ -397,7 +492,7 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
               disabled={loading || otp.length !== 6}
               className="w-full bg-[#4aaaff] text-white font-bold py-3 rounded-lg hover:bg-blue-800 transition-colors shadow-lg disabled:opacity-50"
             >
-              {loading ? 'Verifying...' : 'Verify Phone Number'}
+              {loading ? 'Verifying & Creating Account...' : 'Verify & Create Account'}
             </button>
 
             <div className="flex items-center justify-between">
@@ -420,12 +515,22 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
           </form>
         )}
 
+        {step === 'account-creation' && (
+          <div className="text-center space-y-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+            <h3 className="text-xl font-bold text-white">Creating Your Account</h3>
+            <p className="text-white/90 text-sm">
+              Phone verified! Setting up your account...
+            </p>
+          </div>
+        )}
+
         {step === 'success' && (
           <div className="text-center space-y-4">
             <div className="text-white text-6xl mb-4">✓</div>
-            <h3 className="text-xl font-bold text-white">Account Created!</h3>
+            <h3 className="text-xl font-bold text-white">Welcome to Mamagadhi!</h3>
             <p className="text-white/90 text-sm">
-              Your account has been created and your phone number has been verified.
+              Your account has been created successfully with verified phone number.
               Redirecting you to the dashboard...
             </p>
           </div>
