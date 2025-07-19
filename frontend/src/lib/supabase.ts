@@ -20,26 +20,27 @@ export interface UserProfile {
   updated_at: string
 }
 
-// Function to create user profile via API route
+// Function to create user profile - direct Supabase call for local dev
 export const createUserProfile = async (userData: Omit<UserProfile, 'created_at' | 'updated_at'>) => {
-  const response = await fetch('/api/auth/create-profile', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(userData),
-  })
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .insert([{
+      ...userData,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }])
+    .select()
+    .single()
 
-  if (!response.ok) {
-    const errorData = await response.json()
-    throw new Error(errorData.error || 'Failed to create user profile')
+  if (error) {
+    console.error('Error creating user profile:', error)
+    throw new Error(`Failed to create user profile: ${error.message}`)
   }
 
-  const result = await response.json()
-  return result.data
+  return data
 }
 
-// Function to get user profile
+// Function to get user profile - direct Supabase call for local dev
 export const getUserProfile = async (userId: string) => {
   const { data, error } = await supabase
     .from('user_profiles')
@@ -55,7 +56,7 @@ export const getUserProfile = async (userId: string) => {
   return data
 }
 
-// Function to update user profile
+// Function to update user profile - direct Supabase call for local dev
 export const updateUserProfile = async (userId: string, updates: Partial<UserProfile>) => {
   const { data, error } = await supabase
     .from('user_profiles')
