@@ -2,22 +2,12 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY! // Add this to your .env.local
 
-// Regular client for authenticated operations
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Service role client for admin operations (like user creation)
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-})
-
-// User profile interface - updated to use string for Firebase UID
+// User profile interface
 export interface UserProfile {
-  id: string // Firebase UID (text, not UUID)
+  id: string
   email: string
   phone: string
   first_name: string
@@ -30,24 +20,23 @@ export interface UserProfile {
   updated_at: string
 }
 
-// Function to create user profile using service role (bypasses RLS)
+// Function to create user profile via API route
 export const createUserProfile = async (userData: Omit<UserProfile, 'created_at' | 'updated_at'>) => {
-  const { data, error } = await supabaseAdmin
-    .from('user_profiles')
-    .insert([{
-      ...userData,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }])
-    .select()
-    .single()
+  const response = await fetch('/api/auth/create-profile', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(userData),
+  })
 
-  if (error) {
-    console.error('Error creating user profile:', error)
-    throw new Error(`Failed to create user profile: ${error.message}`)
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.error || 'Failed to create user profile')
   }
 
-  return data
+  const result = await response.json()
+  return result.data
 }
 
 // Function to get user profile
