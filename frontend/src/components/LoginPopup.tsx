@@ -388,8 +388,8 @@ export default function LoginPopup({ isOpen, onClose, onSwitchToSignup }: LoginP
           </p>
         </div>
 
-        {/* Hidden reCAPTCHA container */}
-        {authMethod === 'phone' && <div id="recaptcha-container"></div>}
+        {/* Hidden reCAPTCHA container - always rendered to avoid removal errors */}
+        <div id="recaptcha-container" style={{ display: 'none' }}></div>
       </div>
     </div>
   );
