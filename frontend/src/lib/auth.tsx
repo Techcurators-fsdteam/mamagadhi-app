@@ -28,54 +28,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
-      console.log('Auth state changed:', firebaseUser?.uid || 'null');
       setUser(firebaseUser);
-      
       if (firebaseUser) {
         try {
-          console.log('Fetching user profile for:', firebaseUser.uid);
           const profile = await getUserProfile(firebaseUser.uid);
-          console.log('Profile fetched successfully:', profile?.email);
           setUserProfile(profile);
-
-          // Update email verification status in Supabase if it changed
           if (profile && profile.is_email_verified !== firebaseUser.emailVerified) {
             try {
               await updateUserProfile(firebaseUser.uid, {
                 is_email_verified: firebaseUser.emailVerified
               });
-              // Update local state
               setUserProfile(prev => prev ? {
                 ...prev,
                 is_email_verified: firebaseUser.emailVerified
               } : null);
-            } catch (error) {
-              console.error('Error updating email verification status:', error);
-            }
+            } catch {} // error unused
           }
         } catch (error) {
-          console.error('Error fetching user profile:', error);
-          // Only set profile to null if user genuinely doesn't exist
-          // Don't fail for server errors
           if (error && typeof error === 'object' && 'code' in error) {
-            // Supabase error codes
             if ((error as { code: string }).code === 'PGRST116') {
-              // No rows returned - user profile doesn't exist
-              console.log('User profile not found - user may need to complete signup');
               setUserProfile(null);
             }
-          } else {
-            // Keep existing profile if it's just a fetch error
-            console.log('Keeping existing profile due to fetch error');
           }
         }
       } else {
         setUserProfile(null);
       }
-      
       setLoading(false);
     });
-
     return unsubscribe;
   }, []);
 
@@ -83,6 +63,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await auth.signOut();
     setUser(null);
     setUserProfile(null);
+    if (typeof window !== 'undefined') {
+      const protectedRoutes = ['/publish', '/book', '/profile'];
+      if (protectedRoutes.some(route => window.location.pathname.startsWith(route))) {
+        window.location.replace('/');
+      }
+    }
   };
 
   return (

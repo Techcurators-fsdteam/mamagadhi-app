@@ -7,17 +7,19 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // User profile interface
 export interface UserProfile {
-  id: string
-  email: string
-  phone: string
-  first_name: string
-  last_name: string
-  display_name: string
-  role: 'driver' | 'passenger' | 'both'
-  is_email_verified: boolean
-  is_phone_verified: boolean
-  created_at: string
-  updated_at: string
+  id: string;
+  email: string;
+  phone: string;
+  first_name: string;
+  last_name: string;
+  display_name: string;
+  role: 'driver' | 'passenger' | 'both';
+  is_email_verified: boolean;
+  is_phone_verified: boolean;
+  created_at: string;
+  updated_at: string;
+  // Add any additional optional fields here if needed, e.g.:
+  photo_url?: string;
 }
 
 // Function to create user profile - direct Supabase call for local dev
@@ -41,19 +43,19 @@ export const createUserProfile = async (userData: Omit<UserProfile, 'created_at'
 }
 
 // Function to get user profile - direct Supabase call for local dev
-export const getUserProfile = async (userId: string) => {
-  const { data, error } = await supabase
+export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
+  const { data, error }: { data: UserProfile | null; error: unknown } = await supabase
     .from('user_profiles')
     .select('*')
     .eq('id', userId)
-    .single()
+    .single();
 
   if (error) {
-    console.error('Error fetching user profile:', error)
-    throw error
+    console.error('Error fetching user profile:', error);
+    throw error;
   }
 
-  return data
+  return data;
 }
 
 // Function to update user profile - direct Supabase call for local dev

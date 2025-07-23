@@ -32,6 +32,7 @@ export default function LoginPopup({ isOpen, onClose, onSwitchToSignup }: LoginP
   const [resendCooldown, setResendCooldown] = useState(0);
   const [verificationId, setVerificationId] = useState('');
   const [recaptchaVerifier, setRecaptchaVerifier] = useState<RecaptchaVerifier | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (resendCooldown > 0) {
@@ -176,8 +177,8 @@ export default function LoginPopup({ isOpen, onClose, onSwitchToSignup }: LoginP
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-gradient-to-b from-[#4AAAFF] to-white/70 rounded-2xl p-8 w-full max-w-md mx-4 relative shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-white/30">
+      <div className="relative bg-gradient-to-br from-[#4AAAFF] to-white rounded-2xl shadow-2xl max-w-md w-full p-8 mx-4" style={{backdropFilter: 'blur(16px)'}}>
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 text-2xl font-bold"
@@ -200,7 +201,7 @@ export default function LoginPopup({ isOpen, onClose, onSwitchToSignup }: LoginP
             className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
               authMethod === 'email'
                 ? 'bg-white text-[#4AAAFF] shadow-sm'
-                : 'text-white hover:bg-white/10'
+                : 'text-black/50 hover:bg-white/10'
             }`}
           >
             Email & Password
@@ -211,7 +212,7 @@ export default function LoginPopup({ isOpen, onClose, onSwitchToSignup }: LoginP
             className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
               authMethod === 'phone'
                 ? 'bg-white text-[#4AAAFF] shadow-sm'
-                : 'text-white hover:bg-white/10'
+                : 'text-black/50 hover:bg-white/10'
             }`}
           >
             Phone OTP
@@ -221,7 +222,7 @@ export default function LoginPopup({ isOpen, onClose, onSwitchToSignup }: LoginP
         {authMethod === 'email' ? (
           <form onSubmit={handleEmailLogin} className="space-y-6">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-white mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-black/50 mb-2">
                 Email Address
               </label>
               <input
@@ -235,19 +236,34 @@ export default function LoginPopup({ isOpen, onClose, onSwitchToSignup }: LoginP
               />
             </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-white mb-2">
+            <div className="relative">
+              <label htmlFor="password" className="block text-sm font-medium text-black/50 mb-2">
                 Password
               </label>
-              <input
-                type="password"
-                id="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#35a4c9] focus:border-transparent outline-none transition-all text-gray-800 placeholder-gray-500"
-                placeholder="Enter your password"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#35a4c9] focus:border-transparent outline-none transition-all text-gray-800 placeholder-gray-500 pr-12"
+                  placeholder="Enter your password"
+                />
+                <button
+                  type="button"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#2196f3] focus:outline-none"
+                  tabIndex={0}
+                >
+                  {showPassword ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" strokeWidth="2" d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/><line x1="4" y1="4" x2="20" y2="20" stroke="currentColor" strokeWidth="2"/></svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" strokeWidth="2" d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/></svg>
+                  )}
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center justify-between">
@@ -256,9 +272,9 @@ export default function LoginPopup({ isOpen, onClose, onSwitchToSignup }: LoginP
                   type="checkbox"
                   className="rounded border-gray-300 text-[#35a4c9] focus:ring-[#35a4c9]"
                 />
-                <span className="ml-2 text-sm text-white">Remember me</span>
+                <span className="ml-2 text-smtext-black/50">Remember me</span>
               </label>
-              <a href="#" className="text-sm text-white hover:underline">
+              <a href="#" className="text-smtext-black/50 hover:underline">
                 Forgot password?
               </a>
             </div>
@@ -282,7 +298,7 @@ export default function LoginPopup({ isOpen, onClose, onSwitchToSignup }: LoginP
             {step === 'input' ? (
               <form onSubmit={handleSendPhoneOTP} className="space-y-6">
                 <div>
-                  <label htmlFor="phone" className="block text-sm font-medium text-white mb-2">
+                  <label htmlFor="phone" className="block text-sm font-mediumtext-black/50 mb-2">
                     Phone Number
                   </label>
                   <input
@@ -294,7 +310,7 @@ export default function LoginPopup({ isOpen, onClose, onSwitchToSignup }: LoginP
                     className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#35a4c9] focus:border-transparent outline-none transition-all text-gray-800 placeholder-gray-500"
                     placeholder="Enter phone (+1234567890)"
                   />
-                  <p className="text-xs text-white/80 mt-1">
+                  <p className="text-xs text-black/80 mt-1">
                     Use E.164 format (e.g., +1234567890)
                   </p>
                 </div>
@@ -316,7 +332,7 @@ export default function LoginPopup({ isOpen, onClose, onSwitchToSignup }: LoginP
             ) : (
               <form onSubmit={handleVerifyOTP} className="space-y-6">
                 <div>
-                  <label htmlFor="otp" className="block text-sm font-medium text-white mb-2">
+                  <label htmlFor="otp" className="block text-sm font-medium text-black/50 mb-2">
                     Enter 6-Digit SMS Code
                   </label>
                   <input
@@ -329,7 +345,7 @@ export default function LoginPopup({ isOpen, onClose, onSwitchToSignup }: LoginP
                     className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#35a4c9] focus:border-transparent outline-none transition-all text-gray-800 placeholder-gray-500 text-center text-2xl tracking-widest"
                     placeholder="000000"
                   />
-                  <p className="text-xs text-white/80 mt-1">
+                  <p className="text-xs text-black/80 mt-1">
                     SMS sent to {phone}
                   </p>
                 </div>
@@ -343,7 +359,7 @@ export default function LoginPopup({ isOpen, onClose, onSwitchToSignup }: LoginP
                 <button
                   type="submit"
                   disabled={loading || otp.length !== 6}
-                  className="w-full bg-[#4aaaff] text-white font-bold py-3 rounded-lg hover:bg-blue-800 transition-colors shadow-lg disabled:opacity-50"
+                  className="w-full bg-[#4aaaff] text-black/50 font-bold py-3 rounded-lg hover:bg-blue-800 transition-colors shadow-lg disabled:opacity-50"
                 >
                   {loading ? 'Verifying...' : 'Verify Code'}
                 </button>
@@ -353,14 +369,14 @@ export default function LoginPopup({ isOpen, onClose, onSwitchToSignup }: LoginP
                     type="button"
                     onClick={handleResendOTP}
                     disabled={resendCooldown > 0 || loading}
-                    className="text-white text-sm hover:underline disabled:opacity-50"
+                    className="text-black/50 text-sm hover:underline disabled:opacity-50"
                   >
                     {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend SMS'}
                   </button>
                   <button
                     type="button"
                     onClick={resetForm}
-                    className="text-white text-sm hover:underline"
+                    className="text-black/50 text-sm hover:underline"
                   >
                     Change number
                   </button>
@@ -372,16 +388,16 @@ export default function LoginPopup({ isOpen, onClose, onSwitchToSignup }: LoginP
 
         <div className="my-6 flex items-center">
           <div className="flex-1 border-t border-white/50"></div>
-          <span className="px-4 text-sm text-white">OR</span>
+          <span className="px-4 text-sm text-black">OR</span>
           <div className="flex-1 border-t border-white/50"></div>
         </div>
 
         <div className="text-center">
-          <p className="text-sm text-white">
+          <p className="text-sm text-black/50">
             Don&apos;t have an account?{' '}
             <button 
               onClick={onSwitchToSignup}
-              className="text-white font-medium hover:underline"
+              className="text-black/50 font-medium hover:underline"
             >
               Sign up here
             </button>

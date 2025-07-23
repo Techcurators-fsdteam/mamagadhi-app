@@ -298,21 +298,21 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-gradient-to-b from-[#4AAAFF] to-white/70 rounded-2xl p-8 w-full max-w-md mx-4 relative shadow-2xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-white/30">
+      <div className="relative bg-gradient-to-br from-[#4AAAFF] to-white rounded-2xl shadow-2xl max-w-md w-full p-8 mx-4 max-h-[90vh] overflow-y-auto" style={{backdropFilter: 'blur(16px)'}}>
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-600 hover:text-gray-800 text-2xl font-bold"
+          className="absolute top-4 right-4 text-black/50 hover:text-[#2196f3] text-2xl font-bold"
         >
           ×
         </button>
 
         <div className="text-center mb-6">
-          <h1 className="text-3xl font-extrabold text-white mb-2">
+          <h1 className="text-3xl font-extrabold text-black/50 mb-2">
             Mamagadhi
           </h1>
-          <div className="w-16 h-1 bg-white mx-auto rounded-full"></div>
-          <p className="text-sm text-white/90 mt-2">
+          <div className="w-16 h-1 bg-black/20 mx-auto rounded-full"></div>
+          <p className="text-sm text-black/90 mt-2">
             {step === 'form' && 'Create your account'}
             {step === 'phone-verification' && 'Verify your phone number'}
             {step === 'account-creation' && 'Creating your account...'}
@@ -324,7 +324,7 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label htmlFor="firstName" className="block text-sm font-medium text-white mb-2">
+                <label htmlFor="firstName" className="block text-sm font-medium text-black/50 mb-2">
                   First Name
                 </label>
                 <input
@@ -334,12 +334,12 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
                   value={formData.firstName}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#35a4c9] focus:border-transparent outline-none transition-all text-gray-800 placeholder-gray-500"
+                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#35a4c9] focus:border-transparent outline-none transition-all text-black/80 placeholder-gray-500"
                   placeholder="John"
                 />
               </div>
               <div>
-                <label htmlFor="lastName" className="block text-sm font-medium text-white mb-2">
+                <label htmlFor="lastName" className="block text-sm font-medium text-black/50 mb-2">
                   Last Name
                 </label>
                 <input
@@ -349,14 +349,14 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
                   value={formData.lastName}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#35a4c9] focus:border-transparent outline-none transition-all text-gray-800 placeholder-gray-500"
+                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#35a4c9] focus:border-transparent outline-none transition-all text-black/80 placeholder-gray-500"
                   placeholder="Doe"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-white mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-black/50 mb-2">
                 Email Address
               </label>
               <input
@@ -366,13 +366,13 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
                 value={formData.email}
                 onChange={handleInputChange}
                 required
-                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#35a4c9] focus:border-transparent outline-none transition-all text-gray-800 placeholder-gray-500"
+                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#35a4c9] focus:border-transparent outline-none transition-all text-black/80 placeholder-gray-500"
                 placeholder="john.doe@email.com"
               />
             </div>
 
             <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-white mb-2">
+              <label htmlFor="phone" className="block text-sm font-medium text-black/50 mb-2">
                 Phone Number
               </label>
               <input
@@ -382,17 +382,17 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
                 value={formData.phone}
                 onChange={handleInputChange}
                 required
-                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#35a4c9] focus:border-transparent outline-none transition-all text-gray-800 placeholder-gray-500"
+                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#35a4c9] focus:border-transparent outline-none transition-all text-black/80 placeholder-gray-500"
                 placeholder="+1234567890"
               />
-              <p className="text-xs text-white/80 mt-1">
+              <p className="text-xs text-black/80 mt-1">
                 Use E.164 format (e.g., +1234567890)
               </p>
             </div>
 
             {/* Role Selection */}
             <div>
-              <label className="block text-sm font-medium text-white mb-2">
+              <label className="block text-sm font-medium text-black/50 mb-2">
                 I want to use Mamagadhi as a:
               </label>
               <div className="space-y-2">
@@ -419,14 +419,14 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
                       onChange={(e) => setSelectedRole(e.target.value as typeof selectedRole)}
                       className="mr-3 text-[#35a4c9] focus:ring-[#35a4c9]"
                     />
-                    <span className="text-white text-sm">{option.label}</span>
+                    <span className="text-black/80 text-sm">{option.label}</span>
                   </label>
                 ))}
               </div>
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-white mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-black/50 mb-2">
                 Password
               </label>
               <input
@@ -436,13 +436,13 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
                 value={formData.password}
                 onChange={handleInputChange}
                 required
-                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#35a4c9] focus:border-transparent outline-none transition-all text-gray-800 placeholder-gray-500"
+                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#35a4c9] focus:border-transparent outline-none transition-all text-black/80 placeholder-gray-500"
                 placeholder="Create a strong password"
               />
             </div>
 
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-white mb-2">
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-black/50 mb-2">
                 Confirm Password
               </label>
               <input
@@ -452,7 +452,7 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
                 value={formData.confirmPassword}
                 onChange={handleInputChange}
                 required
-                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#35a4c9] focus:border-transparent outline-none transition-all text-gray-800 placeholder-gray-500"
+                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#35a4c9] focus:border-transparent outline-none transition-all text-black/80 placeholder-gray-500"
                 placeholder="Confirm your password"
               />
             </div>
@@ -464,13 +464,13 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
                 required
                 className="mt-1 rounded border-gray-300 text-[#35a4c9] focus:ring-[#35a4c9]"
               />
-              <label htmlFor="terms" className="ml-2 text-sm text-white">
+              <label htmlFor="terms" className="ml-2 text-sm text-black/80">
                 I agree to the{' '}
-                <a href="#" className="text-white font-medium hover:underline">
+                <a href="#" className="text-black/80 font-medium hover:underline">
                   Terms of Service
                 </a>{' '}
                 and{' '}
-                <a href="#" className="text-white font-medium hover:underline">
+                <a href="#" className="text-black/80 font-medium hover:underline">
                   Privacy Policy
                 </a>
               </label>
@@ -495,7 +495,7 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
         {step === 'phone-verification' && (
           <form onSubmit={handleVerifyPhone} className="space-y-6">
             <div>
-              <label htmlFor="signup-otp" className="block text-sm font-medium text-white mb-2">
+              <label htmlFor="signup-otp" className="block text-sm font-medium text-black/50 mb-2">
                 Enter 6-Digit SMS Code
               </label>
               <input
@@ -505,13 +505,13 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 required
                 maxLength={6}
-                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#35a4c9] focus:border-transparent outline-none transition-all text-gray-800 placeholder-gray-500 text-center text-2xl tracking-widest"
+                className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#35a4c9] focus:border-transparent outline-none transition-all text-black/80 placeholder-gray-500 text-center text-2xl tracking-widest"
                 placeholder="000000"
               />
-              <p className="text-xs text-white/80 mt-1">
+              <p className="text-xs text-black/80 mt-1">
                 SMS sent to {formData.phone}
               </p>
-              <p className="text-xs text-white/70 mt-2">
+              <p className="text-xs text-black/70 mt-2">
                 After verification, we&apos;ll create your account automatically.
               </p>
             </div>
@@ -535,14 +535,14 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
                 type="button"
                 onClick={handleResendOTP}
                 disabled={resendCooldown > 0 || loading}
-                className="text-white text-sm hover:underline disabled:opacity-50"
+                className="text-black/80 text-sm hover:underline disabled:opacity-50"
               >
                 {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend SMS'}
               </button>
               <button
                 type="button"
                 onClick={resetForm}
-                className="text-white text-sm hover:underline"
+                className="text-black/80 text-sm hover:underline"
               >
                 Change details
               </button>
@@ -552,9 +552,9 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
 
         {step === 'account-creation' && (
           <div className="text-center space-y-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-            <h3 className="text-xl font-bold text-white">Creating Your Account</h3>
-            <p className="text-white/90 text-sm">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black/50 mx-auto mb-4"></div>
+            <h3 className="text-xl font-bold text-black/80">Creating Your Account</h3>
+            <p className="text-black/90 text-sm">
               Phone verified! Setting up your account...
             </p>
             {/* Add error display for account creation step */}
@@ -568,9 +568,9 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
 
         {step === 'success' && (
           <div className="text-center space-y-4">
-            <div className="text-white text-6xl mb-4">✓</div>
-            <h3 className="text-xl font-bold text-white">Welcome to Mamagadhi!</h3>
-            <p className="text-white/90 text-sm">
+            <div className="text-black/80 text-6xl mb-4">✓</div>
+            <h3 className="text-xl font-bold text-black/80">Welcome to Mamagadhi!</h3>
+            <p className="text-black/90 text-sm">
               Your account has been created successfully with verified phone number.
               Redirecting you to the dashboard...
             </p>
@@ -580,17 +580,17 @@ export default function SignupPopup({ isOpen, onClose, onSwitchToLogin }: Signup
         {step === 'form' && (
           <>
             <div className="my-6 flex items-center">
-              <div className="flex-1 border-t border-white/50"></div>
-              <span className="px-4 text-sm text-white">OR</span>
-              <div className="flex-1 border-t border-white/50"></div>
+              <div className="flex-1 border-t border-black/50"></div>
+              <span className="px-4 text-sm text-black/80">OR</span>
+              <div className="flex-1 border-t border-black/50"></div>
             </div>
 
             <div className="text-center">
-              <p className="text-sm text-white">
+              <p className="text-sm text-black/80">
                 Already have an account?{' '}
                 <button 
                   onClick={onSwitchToLogin}
-                  className="text-white font-medium hover:underline"
+                  className="text-black/80 font-medium hover:underline"
                 >
                   Sign in here
                 </button>

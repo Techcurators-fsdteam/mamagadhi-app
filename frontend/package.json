@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.850.0",
     "@mapbox/mapbox-sdk": "^0.16.1",
     "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-dialog": "^1.1.14",
@@ -30,6 +31,7 @@
     "react-day-picker": "^9.8.0",
     "react-dom": "19.1.0",
     "react-hook-form": "^7.60.0",
+    "react-icons": "^5.5.0",
     "react-intersection-observer": "^9.16.0",
     "react-map-gl": "^8.0.4",
     "resend": "^4.6.0",
