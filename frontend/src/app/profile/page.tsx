@@ -8,11 +8,18 @@ import { sendEmailVerification, updateProfile as updateFirebaseProfile } from 'f
 import Navbar from '../../components/Navbar';
 import { useRouter } from 'next/navigation';
 import Footer from '../../components/Footer';
+import { v4 as uuidv4 } from 'uuid';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export default function ProfilePage() {
   // All hooks at the top
   const router = useRouter();
-  const { user, userProfile, loading } = useAuth();
+  const { user, loading } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
@@ -46,6 +53,24 @@ export default function ProfilePage() {
   const [photoUploadStatus, setPhotoUploadStatus] = useState<'idle' | 'uploading' | 'uploaded' | 'error'>('idle');
   // Driver verification (for testing)
   const [driverVerified, setDriverVerified] = useState(false);
+  const [driverProfile, setDriverProfile] = useState<unknown>(null);
+  const [userProfile, setUserProfile] = useState<unknown>(null);
+
+  // Fetch driver_profiles on load and after upload
+  useEffect(() => {
+    const fetchDriverProfile = async () => {
+      if (user?.uid) {
+        const { data } = await supabase
+          .from('driver_profiles')
+          .select('*')
+          .eq('user_profile_id', user.uid)
+          .single();
+        setDriverProfile(data);
+      }
+    };
+    fetchDriverProfile();
+  }, [user]);
+
   useEffect(() => {
     const flag = typeof window !== 'undefined' ? localStorage.getItem('driverVerified') : null;
     setDriverVerified(flag === 'true');
@@ -69,26 +94,40 @@ export default function ProfilePage() {
   useEffect(() => {
     if (userProfile) {
       setFormData({
-        first_name: userProfile.first_name,
-        last_name: userProfile.last_name,
-        display_name: userProfile.display_name,
-        phone: userProfile.phone,
-        role: userProfile.role
+        first_name: (userProfile as { [key: string]: unknown }).first_name as string,
+        last_name: (userProfile as { [key: string]: unknown }).last_name as string,
+        display_name: (userProfile as { [key: string]: unknown }).display_name as string,
+        phone: (userProfile as { [key: string]: unknown }).phone as string,
+        role: (userProfile as { [key: string]: unknown }).role as 'driver' | 'passenger' | 'both'
       });
       setDriverData({
-        first_name: userProfile.first_name,
-        last_name: userProfile.last_name,
-        display_name: userProfile.display_name,
-        phone: userProfile.phone,
-        role: userProfile.role === 'driver' ? 'driver' : 'both'
+        first_name: (userProfile as { [key: string]: unknown }).first_name as string,
+        last_name: (userProfile as { [key: string]: unknown }).last_name as string,
+        display_name: (userProfile as { [key: string]: unknown }).display_name as string,
+        phone: (userProfile as { [key: string]: unknown }).phone as string,
+        role: ((userProfile as { [key: string]: unknown }).role as string) === 'driver' ? 'driver' : 'both'
       });
-      if (userProfile && typeof userProfile.photo_url === 'string' && userProfile.photo_url) {
-        setPhotoPreview(userProfile.photo_url);
+      if (userProfile && typeof (userProfile as { [key: string]: unknown }).photo_url === 'string' && (userProfile as { [key: string]: unknown }).photo_url) {
+        setPhotoPreview((userProfile as { [key: string]: unknown }).photo_url as string);
       } else {
         setPhotoPreview(null);
       }
     }
   }, [userProfile]);
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (user?.uid) {
+        const { data } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('id', user.uid)
+          .single();
+        setUserProfile(data);
+      }
+    };
+    fetchUserProfile();
+  }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -99,6 +138,45 @@ export default function ProfilePage() {
   };
 
   // Removed unused handleDriverInputChange
+
+  // Helper to upload a file to R2 using pre-signed URL and update DB
+  const uploadDocument = async (file: File, documentType: 'profile' | 'dl' | 'id') => {
+    if (!user) return { success: false, url: '' };
+    const uuid = uuidv4();
+    // Step 1: Get pre-signed URL
+    const urlRes = await fetch('/api/get-upload-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: user.uid,
+        document_type: documentType,
+        uuid,
+        filetype: file.type,
+      }),
+    });
+    const urlData = await urlRes.json();
+    if (!urlData.uploadUrl) return { success: false, error: urlData.error };
+    // Step 2: Upload file to R2
+    const putRes = await fetch(urlData.uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type },
+      body: file,
+    });
+    if (!putRes.ok) return { success: false, error: 'Failed to upload to R2' };
+    // Step 3: Record in DB
+    const dbRes = await fetch('/api/upload-document', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: user.uid,
+        document_type: documentType,
+        publicUrl: urlData.publicUrl,
+      }),
+    });
+    const dbData = await dbRes.json();
+    if (!dbData.success) return { success: false, error: dbData.error };
+    return { success: true, url: urlData.publicUrl };
+  };
 
   // File upload handlers
   const handleDrivingLicenceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -114,34 +192,84 @@ export default function ProfilePage() {
     }
   };
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setPhotoFile(e.target.files[0]);
-      setPhotoUploadStatus('idle');
-      setPhotoPreview(URL.createObjectURL(e.target.files[0]));
+    const file = e.target.files?.[0];
+    if (file) {
+      setPhotoFile(file);
+      setPhotoPreview(URL.createObjectURL(file));
     }
   };
 
-  // Simulate upload
+  // Lock logic
+  const isProfileImageLocked = !!(userProfile && (userProfile as { [key: string]: unknown }).profile_url);
+  const isDLFieldLocked = !!(driverProfile && (driverProfile as { [key: string]: unknown }).dl_url);
+  const isIDFieldLocked = !!(driverProfile && (driverProfile as { [key: string]: unknown }).id_url);
+
   const handleUploadDL = async () => {
     if (!drivingLicenceFile) return;
     setDlUploadStatus('uploading');
-    setTimeout(() => {
+    const result = await uploadDocument(drivingLicenceFile, 'dl');
+    if (result.success) {
       setDlUploadStatus('uploaded');
-    }, 1200);
+      setMessage('Driving Licence uploaded successfully!');
+      setDrivingLicenceFile(null); // Clear file input
+      // Refetch driver profile to persist lock state
+      if (user?.uid) {
+        const { data } = await supabase
+          .from('driver_profiles')
+          .select('*')
+          .eq('user_profile_id', user.uid)
+          .single();
+        setDriverProfile(data);
+      }
+    } else {
+      setDlUploadStatus('error');
+      setError(result.error || 'Failed to upload Driving Licence.');
+    }
   };
   const handleUploadID = async () => {
     if (!idCardFile) return;
     setIdUploadStatus('uploading');
-    setTimeout(() => {
+    const result = await uploadDocument(idCardFile, 'id');
+    if (result.success) {
       setIdUploadStatus('uploaded');
-    }, 1200);
+      setMessage('ID Card uploaded successfully!');
+      setIdCardFile(null); // Clear file input
+      // Refetch driver profile to persist lock state
+      if (user?.uid) {
+        const { data } = await supabase
+          .from('driver_profiles')
+          .select('*')
+          .eq('user_profile_id', user.uid)
+          .single();
+        setDriverProfile(data);
+      }
+    } else {
+      setIdUploadStatus('error');
+      setError(result.error || 'Failed to upload ID Card.');
+    }
   };
   const handleUploadPhoto = async () => {
     if (!photoFile) return;
     setPhotoUploadStatus('uploading');
-    setTimeout(() => {
+    const result = await uploadDocument(photoFile, 'profile');
+    if (result.success) {
       setPhotoUploadStatus('uploaded');
-    }, 1200);
+      setMessage('Profile photo uploaded successfully!');
+      setPhotoFile(null); // Clear file input
+      setPhotoPreview(null);
+      // Refetch user profile to update avatar and lock state
+      if (user?.uid) {
+        const { data } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('id', user.uid)
+          .single();
+        setUserProfile(data);
+      }
+    } else {
+      setPhotoUploadStatus('error');
+      // Optionally set error message
+    }
   };
 
   const handleSave = async () => {
@@ -188,21 +316,21 @@ export default function ProfilePage() {
   const handleCancel = () => {
     if (userProfile) {
       setFormData({
-        first_name: userProfile.first_name,
-        last_name: userProfile.last_name,
-        display_name: userProfile.display_name,
-        phone: userProfile.phone,
-        role: userProfile.role
+        first_name: (userProfile as { [key: string]: unknown }).first_name as string,
+        last_name: (userProfile as { [key: string]: unknown }).last_name as string,
+        display_name: (userProfile as { [key: string]: unknown }).display_name as string,
+        phone: (userProfile as { [key: string]: unknown }).phone as string,
+        role: (userProfile as { [key: string]: unknown }).role as 'driver' | 'passenger' | 'both'
       });
       setDriverData({
-        first_name: userProfile.first_name,
-        last_name: userProfile.last_name,
-        display_name: userProfile.display_name,
-        phone: userProfile.phone,
-        role: userProfile.role === 'driver' ? 'driver' : 'both'
+        first_name: (userProfile as { [key: string]: unknown }).first_name as string,
+        last_name: (userProfile as { [key: string]: unknown }).last_name as string,
+        display_name: (userProfile as { [key: string]: unknown }).display_name as string,
+        phone: (userProfile as { [key: string]: unknown }).phone as string,
+        role: ((userProfile as { [key: string]: unknown }).role as string) === 'driver' ? 'driver' : 'both'
       });
-      if (userProfile && typeof userProfile.photo_url === 'string' && userProfile.photo_url) {
-        setPhotoPreview(userProfile.photo_url);
+      if (userProfile && typeof (userProfile as { [key: string]: unknown }).photo_url === 'string' && (userProfile as { [key: string]: unknown }).photo_url) {
+        setPhotoPreview((userProfile as { [key: string]: unknown }).photo_url as string);
       } else {
         setPhotoPreview(null);
       }
@@ -299,13 +427,22 @@ export default function ProfilePage() {
               <div className="flex flex-col items-center w-full">
                 <div
                   className="relative group cursor-pointer mb-2"
-                  onClick={() => photoInputRef.current?.click()}
+                  onClick={() => !isProfileImageLocked && photoInputRef.current?.click()}
                   title="Click to upload photo"
+                  style={{ pointerEvents: isProfileImageLocked ? 'none' : 'auto' }}
                 >
-                  {photoPreview ? (
+                  {(userProfile && (userProfile as { [key: string]: unknown }).profile_url) ? (
+                    <Image
+                      src={(userProfile as { [key: string]: unknown }).profile_url as string}
+                      alt="Profile"
+                      width={128}
+                      height={128}
+                      className="w-32 h-32 rounded-full object-cover border-4 border-[#4AAAFF] shadow"
+                    />
+                  ) : photoPreview ? (
                     <Image
                       src={photoPreview}
-                      alt="Profile"
+                      alt="Profile Preview"
                       width={128}
                       height={128}
                       className="w-32 h-32 rounded-full object-cover border-4 border-[#4AAAFF] shadow"
@@ -321,12 +458,28 @@ export default function ProfilePage() {
                     ref={photoInputRef}
                     onChange={handlePhotoChange}
                     className="hidden"
+                    disabled={isProfileImageLocked}
                   />
                   <div className="absolute bottom-0 right-0 bg-[#4AAAFF] text-white rounded-full p-1 border border-white shadow text-xs group-hover:scale-110 transition-transform">
                     <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 5v14m7-7H5"/></svg>
                   </div>
                 </div>
                 <div className="mt-1 text-xs text-gray-500">Click avatar to upload photo</div>
+                {isProfileImageLocked && (
+                  <div className="text-xs text-blue-600 mt-1">
+                    Profile photo uploaded. You cannot change it again.
+                  </div>
+                )}
+                {!isProfileImageLocked && photoFile && photoUploadStatus !== 'uploaded' && (
+                  <button
+                    type="button"
+                    onClick={handleUploadPhoto}
+                    className="bg-[#4AAAFF] text-white px-3 py-1 rounded hover:bg-blue-600 text-xs disabled:opacity-50 mt-2"
+                    disabled={photoUploadStatus === 'uploading'}
+                  >
+                    {photoUploadStatus === 'uploading' ? 'Uploading...' : 'Upload'}
+                  </button>
+                )}
               </div>
               {/* Personal Information */}
               <div className="w-full grid grid-cols-1 gap-4">
@@ -371,7 +524,7 @@ export default function ProfilePage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4AAAFF] focus:border-transparent outline-none disabled:bg-gray-50 disabled:text-gray-500 mt-1"
                   />
                   <div className="flex items-center mt-1">
-                    {userProfile?.is_phone_verified ? (
+                    {(userProfile && (userProfile as { [key: string]: unknown }).is_phone_verified) ? (
                       <span className="text-green-600 text-sm flex items-center">
                         <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -456,8 +609,8 @@ export default function ProfilePage() {
                       type="text"
                       name="first_name"
                       value={driverData.first_name}
-                      disabled
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 mt-1"
+                      disabled={!isEditing}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4AAAFF] focus:border-transparent outline-none disabled:bg-gray-50 disabled:text-gray-500 mt-1"
                     />
                   </label>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Last Name
@@ -465,8 +618,8 @@ export default function ProfilePage() {
                       type="text"
                       name="last_name"
                       value={driverData.last_name}
-                      disabled
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 mt-1"
+                      disabled={!isEditing}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4AAAFF] focus:border-transparent outline-none disabled:bg-gray-50 disabled:text-gray-500 mt-1"
                     />
                   </label>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Display Name
@@ -474,8 +627,8 @@ export default function ProfilePage() {
                       type="text"
                       name="display_name"
                       value={driverData.display_name}
-                      disabled
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 mt-1"
+                      disabled={!isEditing}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4AAAFF] focus:border-transparent outline-none disabled:bg-gray-50 disabled:text-gray-500 mt-1"
                     />
                   </label>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number
@@ -483,16 +636,16 @@ export default function ProfilePage() {
                       type="tel"
                       name="phone"
                       value={driverData.phone}
-                      disabled
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 mt-1"
+                      disabled={!isEditing}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4AAAFF] focus:border-transparent outline-none disabled:bg-gray-50 disabled:text-gray-500 mt-1"
                     />
                   </label>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Role
                     <select
                       name="role"
                       value={driverData.role}
-                      disabled
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 mt-1"
+                      disabled={!isEditing}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4AAAFF] focus:border-transparent outline-none disabled:bg-gray-50 disabled:text-gray-500 mt-1"
                     >
                       <option value="driver">Driver (Offer rides)</option>
                       <option value="both">Both (Book & Offer rides)</option>
@@ -508,8 +661,9 @@ export default function ProfilePage() {
                         accept=".png,.jpg,.jpeg,.pdf,.webp,.bmp"
                         onChange={handleDrivingLicenceChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-[#4AAAFF] focus:border-transparent outline-none"
+                        disabled={isDLFieldLocked}
                       />
-                      {drivingLicenceFile && dlUploadStatus !== 'uploaded' && (
+                      {!isDLFieldLocked && drivingLicenceFile && dlUploadStatus !== 'uploaded' && (
                         <button
                           type="button"
                           onClick={handleUploadDL}
@@ -526,6 +680,7 @@ export default function ProfilePage() {
                         {dlUploadStatus === 'uploaded' && <span className="ml-2 text-green-600">(Uploaded)</span>}
                       </div>
                     )}
+                    {isDLFieldLocked && <div className="text-xs text-blue-600 mt-1">File uploaded. You cannot change it again.</div>}
                   </label>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Aadhar / PAN Card (png, jpg, jpeg, pdf, etc.)
                     <div className="flex items-center gap-2 mt-1">
@@ -534,8 +689,9 @@ export default function ProfilePage() {
                         accept=".png,.jpg,.jpeg,.pdf,.webp,.bmp"
                         onChange={handleIdCardChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-[#4AAAFF] focus:border-transparent outline-none"
+                        disabled={isIDFieldLocked}
                       />
-                      {idCardFile && idUploadStatus !== 'uploaded' && (
+                      {!isIDFieldLocked && idCardFile && idUploadStatus !== 'uploaded' && (
                         <button
                           type="button"
                           onClick={handleUploadID}
@@ -552,6 +708,7 @@ export default function ProfilePage() {
                         {idUploadStatus === 'uploaded' && <span className="ml-2 text-green-600">(Uploaded)</span>}
                       </div>
                     )}
+                    {isIDFieldLocked && <div className="text-xs text-blue-600 mt-1">File uploaded. You cannot change it again.</div>}
                   </label>
                   {/* Photo Upload */}
                   <label className="block text-sm font-medium text-gray-700 mb-1">Photo (png, jpg, jpeg, etc.)
@@ -561,6 +718,7 @@ export default function ProfilePage() {
                         accept=".png,.jpg,.jpeg,.webp,.bmp"
                         onChange={handlePhotoChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-[#4AAAFF] focus:border-transparent outline-none"
+                        disabled={isProfileImageLocked}
                       />
                       {photoFile && photoUploadStatus !== 'uploaded' && (
                         <button
@@ -579,6 +737,7 @@ export default function ProfilePage() {
                         {photoUploadStatus === 'uploaded' && <span className="ml-2 text-green-600">(Uploaded)</span>}
                       </div>
                     )}
+                    {isProfileImageLocked && <div className="text-xs text-blue-600 mt-1">Profile photo uploaded. You cannot change it again.</div>}
                   </label>
                 </div>
               </div>
