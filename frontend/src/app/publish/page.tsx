@@ -8,25 +8,42 @@ import Footer from '../../components/Footer';
 import { Button } from '../../components/ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '../../components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
+import { useAuth } from '../../lib/auth';
 
 function PublishRide() {
   const router = useRouter();
-  // No need for user or popup state
+  const { user, loading } = useAuth();
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
-
-  // Form state for the interactive menu
   const [formData, setFormData] = useState({
     from: '',
     to: '',
     passengers: '',
     vehicleType: ''
   });
-
-  // Popover states for searchable dropdowns
   const [openFrom, setOpenFrom] = useState(false);
   const [openTo, setOpenTo] = useState(false);
   const [openPassengers, setOpenPassengers] = useState(false);
   const [openVehicle, setOpenVehicle] = useState(false);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace('/');
+    }
+  }, [user, loading, router]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const isDriver = localStorage.getItem('driverVerified') === 'true';
+      if (!isDriver) {
+        alert('You are not verified as a Driver. Update your profile to publish a ride.');
+        router.replace('/profile');
+      }
+    }
+  }, [router]);
+
+  if (!loading && !user) {
+    return null;
+  }
 
   // Dummy data from SearchBar
   const cities = [
@@ -56,18 +73,6 @@ function PublishRide() {
   const isFormValid = () => {
     return formData.from && formData.to && formData.passengers && formData.vehicleType;
   };
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const isDriver = localStorage.getItem('driverVerified') === 'true';
-      if (!isDriver) {
-        alert('You are not verified as a Driver. Update your profile to publish a ride.');
-        router.replace('/profile');
-      } else {
-        // Removed unused allowed
-      }
-    }
-  }, [router]);
 
   // Removed unused showDriverPopup, setShowDriverPopup
 

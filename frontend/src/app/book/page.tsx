@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
-// No need to import useAuth or LoginRequiredPopup
+import { useAuth } from '../../lib/auth';
+import { useRouter } from 'next/navigation';
 
 interface RideResult {
   id: number;
@@ -15,9 +16,21 @@ interface RideResult {
 }
 
 function BookRide() {
-  // No need for user or popup state
+  const { user, loading } = useAuth();
+  const router = useRouter();
   const [search, setSearch] = useState({ origin: '', destination: '', date: '' });
   const [results, setResults] = useState<RideResult[]>([]);
+
+  // Redirect if not authenticated
+  React.useEffect(() => {
+    if (!loading && !user) {
+      router.replace('/');
+    }
+  }, [user, loading, router]);
+
+  if (!loading && !user) {
+    return null;
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearch({ ...search, [e.target.name]: e.target.value });
